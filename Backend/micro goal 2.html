@@ -1,0 +1,1959 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Micro Goal Tracker • Main App Only</title>
+  <style>
+    :root{
+      --bg0:#070a14; --bg1:#0b1230;
+      --panel:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.10);
+      --text:#eaf1ff; --muted:#a9b8de;
+      --accent:#6ea8fe; --accent2:#2dd4bf;
+      --warn:#fbbf24; --bad:#fb7185; --good:#34d399;
+      --shadow: 0 20px 70px rgba(0,0,0,.45);
+      --radius: 16px; --radius2: 12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 18% 8%, rgba(110,168,254,.25), transparent 60%),
+        radial-gradient(900px 560px at 88% 14%, rgba(45,212,191,.18), transparent 55%),
+        radial-gradient(1200px 700px at 50% 105%, rgba(251,191,36,.12), transparent 65%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* Animated background */
+    .blobs{position:fixed; inset:0; pointer-events:none; z-index:-1; filter: blur(30px); opacity:.65}
+    .blob{
+      position:absolute; width:420px; height:420px; border-radius:999px;
+      background: radial-gradient(circle at 30% 30%, rgba(110,168,254,.9), rgba(110,168,254,0));
+      animation: floaty 18s ease-in-out infinite;
+      mix-blend-mode: screen;
+    }
+    .blob.b2{
+      width:520px; height:520px; left:60%; top:10%;
+      background: radial-gradient(circle at 30% 30%, rgba(45,212,191,.85), rgba(45,212,191,0));
+      animation-duration: 22s; animation-delay: -4s;
+    }
+    .blob.b3{
+      width:480px; height:480px; left:25%; top:55%;
+      background: radial-gradient(circle at 30% 30%, rgba(251,191,36,.7), rgba(251,191,36,0));
+      animation-duration: 26s; animation-delay: -10s; opacity:.55;
+    }
+    @keyframes floaty{
+      0%{ transform: translate(0,0) scale(1) }
+      33%{ transform: translate(40px, -30px) scale(1.05) }
+      66%{ transform: translate(-35px, 25px) scale(.98) }
+      100%{ transform: translate(0,0) scale(1) }
+    }
+
+    .wrap{max-width:1100px; margin:0 auto; padding:18px}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:14px 16px;
+      border:1px solid var(--border);
+      background: rgba(10, 14, 26, .55);
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .brand{display:flex; align-items:center; gap:10px}
+    .logo{
+      width:36px; height:36px; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 12px 35px rgba(110,168,254,.25);
+      position:relative; overflow:hidden;
+    }
+    .logo::after{
+      content:""; position:absolute; inset:-40%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+      transform: rotate(25deg) translateX(-60%);
+      animation: shine 2.8s ease-in-out infinite;
+      opacity:.55;
+    }
+    @keyframes shine{
+      0%{ transform: rotate(25deg) translateX(-70%) }
+      50%{ transform: rotate(25deg) translateX(20%) }
+      100%{ transform: rotate(25deg) translateX(110%) }
+    }
+    .t1{font-weight:850; letter-spacing:.2px}
+    .t2{font-size:12px; color:var(--muted)}
+    .rightMeta{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--muted); font-size:12px;
+    }
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--good); box-shadow:0 0 18px rgba(52,211,153,.35)}
+    .dot.off{background:var(--warn); box-shadow:0 0 18px rgba(251,191,36,.35)}
+    .btn{
+      cursor:pointer; padding:10px 12px; border-radius: 12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      color: var(--text); font-weight:800;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07) }
+    .btn:active{ transform: translateY(0) scale(.99) }
+    .btn.primary{
+      border:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#061024;
+      box-shadow: 0 14px 30px rgba(110,168,254,.18);
+    }
+    .btn.danger{
+      border-color: rgba(251,113,133,.38);
+      background: rgba(251,113,133,.12);
+      color:#ffd1da;
+    }
+    .btn:disabled{opacity:.55; cursor:not-allowed; transform:none}
+
+    .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+    .tab{
+      cursor:pointer; padding:9px 12px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color:#cfe0ff; font-weight:850; font-size:12px;
+      transition: background .15s ease, transform .15s ease, border-color .15s ease;
+    }
+    .tab:hover{ transform: translateY(-1px) }
+    .tab.active{ border-color: rgba(110,168,254,.45); background: rgba(110,168,254,.16); }
+
+    .grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:14px; margin-top:14px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+
+    .card{
+      border:1px solid var(--border);
+      background: rgba(10, 14, 26, .48);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      padding:14px;
+      box-shadow: var(--shadow);
+      animation: popIn .35s ease both;
+    }
+    @keyframes popIn{ from{opacity:0; transform: translateY(8px) scale(.99)} to{opacity:1; transform: translateY(0) scale(1)} }
+    .card h3{margin:0 0 10px; font-size:14px; color:#d9e7ff}
+    .muted{color:var(--muted); font-size:12px; line-height:1.45}
+    .hr{height:1px;background:var(--border); margin:12px 0}
+
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input, select, textarea{
+      width:100%; padding:10px 10px; border-radius: 12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline:none;
+    }
+    textarea{min-height:86px; resize:vertical}
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    @media (max-width: 760px){ .grid2{grid-template-columns:1fr} }
+
+    .list{display:flex; flex-direction:column; gap:10px}
+    .item{border:1px solid var(--border); border-radius: var(--radius2); padding:12px; background: rgba(255,255,255,.03)}
+    .itemTop{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+    .itemTitle{font-weight:900}
+    .kvs{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+    .kv{font-size:12px; color:var(--muted); padding:4px 8px; border:1px solid var(--border); border-radius:999px; background: rgba(255,255,255,.03)}
+
+    .progress{height:10px;border-radius:999px;background: rgba(255,255,255,.06); border:1px solid var(--border); overflow:hidden}
+    .bar{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .55s cubic-bezier(.2,.8,.2,1);
+      position:relative;
+    }
+    .bar::after{
+      content:""; position:absolute; inset:0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform: translateX(-50%);
+      animation: shimmer 1.6s ease-in-out infinite;
+      opacity:.35;
+    }
+    @keyframes shimmer{ 0%{transform:translateX(-60%)} 60%{transform:translateX(120%)} 100%{transform:translateX(120%)} }
+
+    .checkRow{display:flex; align-items:center; gap:10px}
+    .checkRow input[type="checkbox"]{width:18px;height:18px}
+    .strike{opacity:.72;text-decoration:line-through}
+
+    .calHead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+    .weekday{color:var(--muted);font-size:12px;padding:0 6px}
+    .cell{
+      border:1px solid var(--border);
+      border-radius: 14px;
+      min-height:90px;
+      padding:8px;
+      background: rgba(0,0,0,.12);
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .cell:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.18) }
+    .cell.selected{ outline: 2px solid rgba(110,168,254,.55) }
+    .cell.faded{ opacity:.45 }
+    .cellHead{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;margin-bottom:6px}
+    .chip{
+      display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-size:12px; padding:4px 6px; border-radius: 10px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      margin-top:6px;
+    }
+    .chip.done{opacity:.65;text-decoration:line-through}
+
+    .toastWrap{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+    .toast{
+      min-width:240px; max-width:360px;
+      border:1px solid var(--border);
+      border-radius: 14px;
+      padding:12px;
+      background: rgba(10, 14, 26, .70);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+      animation: toastIn .22s ease both;
+    }
+    @keyframes toastIn{ from{opacity:0; transform: translateY(10px) scale(.98)} to{opacity:1; transform: translateY(0) scale(1)} }
+    .toastTitle{font-weight:950}
+    .toastMsg{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* Added: status chips + history */
+    .chipStatus{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,.03)}
+    .chipGreen{color:#c8fff1; border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.10)}
+    .chipRed{color:#ffd1da; border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.10)}
+    .chipNeutral{color:#d9e7ff}
+    .histItem{display:flex; gap:10px; align-items:flex-start}
+    .histIcon{
+      width:26px;height:26px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      border:1px solid var(--border); background:rgba(255,255,255,.03); flex:0 0 auto;
+      font-weight:950;
+    }
+    .histIcon.good{border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.10); color:#bfffee}
+    .histIcon.bad{border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.10); color:#ffd1da}
+
+    /* Added: Big fullscreen timeline graph */
+    .fullGraphWrap{
+      margin-top:14px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(10, 14, 26, .48);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .fullGraphTop{
+      padding:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      border-bottom:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .fullGraphTitle{font-weight:950}
+    .rangeTabs{display:flex; gap:8px; flex-wrap:wrap}
+    .rangeTab{
+      cursor:pointer;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color:#cfe0ff;
+      font-weight:900;
+      font-size:12px;
+      user-select:none;
+    }
+    .rangeTab.active{border-color: rgba(110,168,254,.45); background: rgba(110,168,254,.16);}
+    .fullGraphBody{padding:14px}
+    .bigSvg{width:100%; height:360px; display:block}
+    @media (max-width:760px){ .bigSvg{height:320px} }
+
+    /* tiny timer UI */
+    .timerLine{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .timerBadge{
+      font-size:12px; color:var(--muted);
+      padding:4px 8px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+  </style>
+</head>
+<body>
+  <div class="blobs">
+    <div class="blob" style="left:-6%; top:-12%"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <div class="t1">Micro Goal Tracker</div>
+          <div class="t2">Main app only (no login UI) • Uses a userId placeholder</div>
+        </div>
+      </div>
+      <div class="rightMeta">
+  <span class="pill"><span id="netDot" class="dot"></span><span id="netText">Online</span></span>
+  <button id="userBtn" class="btn">User: <span id="userLabel">demo_user</span></button>
+</div>
+    </div>
+
+    <div id="tabs" class="tabs">
+      <div class="tab active" data-tab="dashboard">Dashboard</div>
+      <div class="tab" data-tab="goals">Goals</div>
+      <div class="tab" data-tab="calendar">Calendar</div>
+      <div class="tab" data-tab="insights">Insights</div>
+      <div class="tab" data-tab="settings">Settings</div>
+    </div>
+
+    <!-- Dashboard -->
+    <section id="dashboardTab" class="grid">
+      <div class="card">
+        <h3>Today</h3>
+        <div class="muted">Quick add a micro-goal. Overdue appears first.</div>
+        <div class="hr"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Goal</label>
+            <select id="quickGoal"></select>
+          </div>
+          <div>
+            <label>Due date</label>
+            <input id="quickDue" type="date" />
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div>
+          <label>Micro-goal title</label>
+          <input id="quickTitle" placeholder="e.g., Build hero section animation" />
+        </div>
+
+        <div style="height:10px"></div>
+        <button id="quickAddBtn" class="btn primary">Quick add</button>
+
+        <div class="hr"></div>
+
+        <h3>Overdue</h3>
+        <div id="overdueList" class="list"></div>
+
+        <div style="height:12px"></div>
+
+        <h3>Due today</h3>
+        <div id="todayList" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Summary</h3>
+        <div class="grid2">
+          <div class="item">
+            <div class="itemTitle">Active goals</div>
+            <div id="sumActiveGoals" class="muted">0</div>
+          </div>
+          <div class="item">
+            <div class="itemTitle">Open micro-goals</div>
+            <div id="sumOpenMicro" class="muted">0</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <h3>Active goals preview</h3>
+        <div id="goalPreview" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Goals -->
+    <section id="goalsTab" class="grid" style="display:none">
+      <div class="card">
+        <h3 id="goalFormTitle">Create goal</h3>
+
+        <div class="grid2">
+          <div>
+            <label>Title *</label>
+            <input id="gTitle" placeholder="e.g., Learn React animations" />
+          </div>
+          <div>
+            <label>Category</label>
+            <input id="gCategory" placeholder="e.g., Study / Fitness / Project" />
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div>
+          <label>Description</label>
+          <textarea id="gDesc" placeholder="What does success look like?"></textarea>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Priority</label>
+            <select id="gPriority">
+              <option value="low">low</option>
+              <option value="medium" selected>medium</option>
+              <option value="high">high</option>
+            </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="gStatus">
+              <option value="active" selected>active</option>
+              <option value="completed">completed</option>
+              <option value="archived">archived</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Start date</label>
+            <input id="gStart" type="date" />
+          </div>
+          <div>
+            <label>End date</label>
+            <input id="gEnd" type="date" />
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button id="saveGoalBtn" class="btn primary">Create goal</button>
+          <button id="cancelEditGoalBtn" class="btn" style="display:none">Cancel</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- ADDED: multi-create goals -->
+        <h3>Create multiple goals</h3>
+        <div class="muted">Paste one goal title per line.</div>
+        <div style="height:8px"></div>
+        <textarea id="bulkGoals" placeholder="Goal 1&#10;Goal 2&#10;Goal 3"></textarea>
+        <div style="height:8px"></div>
+        <button id="bulkCreateBtn" class="btn">Create all</button>
+
+        <div class="hr"></div>
+        <div class="muted">Tip: Add micro-goals inside a goal card on the right.</div>
+      </div>
+
+      <div class="card">
+        <h3>Your goals</h3>
+
+        <div class="grid2">
+          <div>
+            <label>Status filter</label>
+            <select id="statusFilter">
+              <option value="active" selected>active</option>
+              <option value="completed">completed</option>
+              <option value="archived">archived</option>
+              <option value="all">all</option>
+            </select>
+          </div>
+          <div>
+            <label>Search</label>
+            <input id="searchText" placeholder="Search title or category" />
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="goalsList" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Calendar -->
+    <section id="calendarTab" class="grid" style="display:none">
+      <div class="card">
+        <div class="calHead">
+          <div>
+            <h3 style="margin:0">Calendar</h3>
+            <div id="calLabel" class="muted"></div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <button id="calPrev" class="btn">Prev</button>
+            <button id="calToday" class="btn">Today</button>
+            <button id="calNext" class="btn">Next</button>
+          </div>
+        </div>
+
+        <div class="calendar" id="calWeekdays"></div>
+        <div class="calendar" id="calGrid"></div>
+      </div>
+
+      <div class="card">
+        <h3 id="selectedDayTitle">Select a day</h3>
+        <div id="selectedDayList" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section id="insightsTab" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h3>Insights (with Timeline Graph)</h3>
+          <div class="muted">
+            Green = completed, Neutral = activity, Red = failed.
+            This chart supports Day / Week / Month / Year views.
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="grid2">
+            <div class="item">
+              <div class="itemTitle">Total micro-goals</div>
+              <div id="insTotal" class="muted">0</div>
+            </div>
+            <div class="item">
+              <div class="itemTitle">Completed micro-goals</div>
+              <div id="insDone" class="muted">0</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <h3>History</h3>
+          <div class="muted">✅ Completed (green), ✖ Failed (red)</div>
+          <div style="height:10px"></div>
+          <div id="historyList" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Alarm sound</h3>
+          <div class="muted">
+            Upload your own sound for timers and reminders. Stored per user in localStorage.
+          </div>
+          <div class="hr"></div>
+
+          <div class="grid2">
+            <div>
+              <label>Upload sound (mp3 / wav)</label>
+              <input id="alarmFile" type="file" accept="audio/*" />
+            </div>
+            <div>
+              <label>Test</label>
+              <button class="btn primary" id="testAlarm">Play sound</button>
+            </div>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="grid2">
+            <div>
+              <label>Default micro-goal timer (minutes)</label>
+              <input id="defaultMicroMins" type="number" min="1" step="1" value="25" />
+            </div>
+            <div>
+              <label>Apply</label>
+              <button class="btn" id="applyDefaultMicroMins">Save default</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fullscreen-ish big chart below (kept under side as you asked) -->
+      <div class="fullGraphWrap">
+        <div class="fullGraphTop">
+          <div>
+            <div class="fullGraphTitle">Progress Timeline (Big Graph)</div>
+            <div class="t2" id="bigGraphLabel">—</div>
+          </div>
+          <div class="rangeTabs" id="rangeTabs">
+            <div class="rangeTab active" data-range="days">Dates</div>
+            <div class="rangeTab" data-range="weeks">Weeks</div>
+            <div class="rangeTab" data-range="months">Months</div>
+            <div class="rangeTab" data-range="years">Years</div>
+          </div>
+        </div>
+        <div class="fullGraphBody">
+          <svg id="bigGraphSvg" class="bigSvg" viewBox="0 0 1200 360" preserveAspectRatio="none" aria-label="Big progress timeline graph"></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settingsTab" class="grid" style="display:none">
+      <div class="card">
+        <h3>Settings</h3>
+        <div class="muted">Change userId (demo). For real per-user accounts, connect Firebase Auth.</div>
+        <div class="hr"></div>
+
+        <div class="grid2">
+          <div>
+            <label>Demo userId</label>
+            <input id="demoUserId" placeholder="e.g., nivas_uid_123" />
+          </div>
+          <div>
+            <label>Data mode</label>
+            <select id="dataMode">
+              <option value="local" selected>Local (localStorage)</option>
+              <option value="firebase">Firebase (Firestore)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <button id="applySettings" class="btn primary">Apply</button>
+
+        <div class="hr"></div>
+        <div class="muted">
+          <strong>Firebase mode:</strong> paste Firebase config inside the JS and enable Firestore.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Firebase config placeholder</h3>
+        <pre id="fbHelp"></pre>
+      </div>
+    </section>
+  </div>
+
+  <div id="toastWrap" class="toastWrap"></div>
+
+  <script type="module">
+    // =========================
+    // MAIN APP ONLY (no login UI)
+    // - default: Local mode (localStorage)
+    // - optional: Firebase Firestore mode
+    // =========================
+
+    // If you switch Settings -> Data mode = Firebase, fill this config:
+    const firebaseConfig = {
+      apiKey: "PASTE_API_KEY",
+      authDomain: "PASTE_AUTH_DOMAIN",
+      projectId: "PASTE_PROJECT_ID",
+      appId: "PASTE_APP_ID",
+    };
+    const configLooksUnset =
+      firebaseConfig.apiKey.startsWith("PASTE_") ||
+      firebaseConfig.authDomain.startsWith("PASTE_") ||
+      firebaseConfig.projectId.startsWith("PASTE_") ||
+      firebaseConfig.appId.startsWith("PASTE_");
+
+    // Firebase imports only when needed
+    let firebase = null;
+
+    // =========================
+    // DOM helpers
+    // =========================
+    const $ = (s) => document.querySelector(s);
+    const el = (tag, attrs={}, children=[]) => {
+      const n = document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v]) => {
+        if (k === "class") n.className = v;
+        else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (k === "html") n.innerHTML = v;
+        else n.setAttribute(k, v);
+      });
+      (Array.isArray(children) ? children : [children]).filter(Boolean).forEach(c => {
+        if (typeof c === "string") n.appendChild(document.createTextNode(c));
+        else n.appendChild(c);
+      });
+      return n;
+    };
+
+    // =========================
+    // Toasts
+    // =========================
+    const toastWrap = $("#toastWrap");
+    function toast(title, msg){
+      const node = el("div",{class:"toast"},[
+        el("div",{class:"toastTitle"}, title),
+        el("div",{class:"toastMsg"}, msg || "")
+      ]);
+      toastWrap.prepend(node);
+      setTimeout(()=> node.style.opacity = "0.0", 2600);
+      setTimeout(()=> node.remove(), 3100);
+    }
+
+    // =========================
+    // Network indicator
+    // =========================
+    function setNetUI(){
+      const online = navigator.onLine;
+      $("#netText").textContent = online ? "Online" : "Offline";
+      $("#netDot").className = online ? "dot" : "dot off";
+    }
+    window.addEventListener("online", setNetUI);
+    window.addEventListener("offline", setNetUI);
+    setNetUI();
+
+    // =========================
+    // Tabs
+    // =========================
+    let activeTab = "dashboard";
+    function setTab(tab){
+      activeTab = tab;
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+      ["dashboard","goals","calendar","insights","settings"].forEach(k => {
+        $("#" + k + "Tab").style.display = (k === tab) ? "" : "none";
+      });
+
+      if (tab === "calendar") renderCalendar();
+      if (tab === "insights") {
+        renderInsights();
+        renderBigGraph();
+      }
+      if (tab === "settings") renderSettings();
+    }
+    $("#tabs").addEventListener("click", (e) => {
+      const t = e.target.closest(".tab");
+      if (!t) return;
+      setTab(t.dataset.tab);
+    });
+
+    // =========================
+    // User + Mode + Alarm settings
+    // =========================
+    const SETTINGS_KEY = "mgt_settings_v2";
+    const defaultSettings = {
+      userId: "demo_user",
+      mode: "local",
+      alarmDataUrl: null,
+      defaultMicroMins: 25
+    };
+    let settings = loadSettings();
+
+    function loadSettings(){
+      try{ return { ...defaultSettings, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")) }; }
+      catch{ return { ...defaultSettings }; }
+    }
+    function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+    function updateUserLabel(){ $("#userLabel").textContent = settings.userId; }
+
+    // =========================
+    // Local storage data layer (per user)
+    // =========================
+    const LS_GOALS = (uid) => `mgt_goals_${uid}`;
+    const LS_MICRO = (uid) => `mgt_micro_${uid}`;
+    const LS_HIST = (uid) => `mgt_history_${uid}`;
+    const LS_TIMERS = (uid) => `mgt_micro_timers_${uid}`; // running timers state
+
+    function lsRead(key){ try{ return JSON.parse(localStorage.getItem(key) || "[]"); }catch{ return []; } }
+    function lsWrite(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+    function lsReadObj(key){ try{ return JSON.parse(localStorage.getItem(key) || "{}"); }catch{ return {}; } }
+    function lsWriteObj(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+
+    const uuid = () => crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(16).slice(2) + Date.now());
+
+    // =========================
+    // App state
+    // =========================
+    let goals = [];
+    let microGoals = [];
+    let history = [];
+    let editingGoalId = null;
+
+    let monthCursor = new Date();
+    let selectedDay = null;
+
+    // Micro timers in memory:
+    // timers[microId] = { running: bool, startMs: number, elapsedMs: number, targetMs: number }
+    let timers = {};
+
+    // Big graph range
+    let bigRange = "days"; // days | weeks | months | years
+
+    const todayISO = () => new Date().toISOString().slice(0,10);
+    const iso = (d) => d.toISOString().slice(0,10);
+    const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+    const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+    const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth()+1, 0);
+
+    function microByGoal(){
+      const map = new Map();
+      for (const m of microGoals){
+        const arr = map.get(m.goalId) || [];
+        arr.push(m);
+        map.set(m.goalId, arr);
+      }
+      return map;
+    }
+    function progressPercent(list){
+      const total = list.length;
+      if (!total) return 0;
+      const done = list.filter(m => m.done).length;
+      return Math.round((done / total) * 100);
+    }
+
+    // =========================
+    // History logging (ADDED)
+    // =========================
+    function addHistory(entry){
+      const e = {
+        id: uuid(),
+        userId: settings.userId,
+        ts: Date.now(),
+        type: entry.type, // completed | failed | info
+        title: entry.title || "",
+        details: entry.details || ""
+      };
+      history.unshift(e);
+      history = history.slice(0, 200);
+      if (settings.mode === "local") lsWrite(LS_HIST(settings.userId), history);
+      // (Firebase mode could also write to a collection; kept simple here)
+    }
+
+    function fmtTime(ts){
+      try{
+        return new Date(ts).toLocaleString([], {year:"numeric", month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+      }catch{
+        return "";
+      }
+    }
+
+    // =========================
+    // Alarm sound handling (ADDED)
+    // =========================
+    const audio = new Audio();
+    audio.preload = "auto";
+
+    function setAlarmAudioFromSettings(){
+      if (settings.alarmDataUrl){
+        audio.src = settings.alarmDataUrl;
+      } else {
+        // fallback: quick generated beep (tiny)
+        audio.src = "";
+      }
+    }
+
+    async function playAlarm(){
+      try{
+        if (settings.alarmDataUrl){
+          audio.currentTime = 0;
+          await audio.play();
+          return;
+        }
+      } catch {}
+
+      // fallback beep using WebAudio (no upload)
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = 880;
+        g.gain.value = 0.06;
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        setTimeout(()=>{ o.stop(); ctx.close(); }, 650);
+      } catch {}
+    }
+
+    // =========================
+    // Data access (local by default, firebase optional)
+    // =========================
+    async function ensureFirebase(){
+      if (firebase) return firebase;
+      const modApp = await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js");
+      const modFs = await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
+      const app = modApp.initializeApp(firebaseConfig);
+      const db = modFs.getFirestore(app);
+      modFs.enableIndexedDbPersistence(db).catch(()=>{});
+      firebase = { db, fs: modFs };
+      return firebase;
+    }
+
+    async function loadAll(){
+      // timers persisted local only (even in firebase mode)
+      timers = lsReadObj(LS_TIMERS(settings.userId));
+
+      if (settings.mode === "firebase"){
+        if (configLooksUnset){
+          toast("Firebase config needed", "Switch to Local mode or paste config in code.");
+          settings.mode = "local"; saveSettings();
+          $("#dataMode").value = "local";
+          return loadAll();
+        }
+        const { db, fs } = await ensureFirebase();
+
+        fs.onSnapshot(
+          fs.query(fs.collection(db, "goals"), fs.where("userId","==",settings.userId), fs.orderBy("updatedAt","desc"), fs.limit(1000)),
+          (snap) => { goals = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); }
+        );
+        fs.onSnapshot(
+          fs.query(fs.collection(db, "microGoals"), fs.where("userId","==",settings.userId), fs.orderBy("updatedAt","desc"), fs.limit(2000)),
+          (snap) => { microGoals = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); }
+        );
+
+        // history local (kept)
+        history = lsRead(LS_HIST(settings.userId));
+        return;
+      }
+
+      goals = lsRead(LS_GOALS(settings.userId));
+      microGoals = lsRead(LS_MICRO(settings.userId));
+      history = lsRead(LS_HIST(settings.userId));
+    }
+
+    async function createGoal(data){
+      const now = Date.now();
+      const g = {
+        userId: settings.userId,
+        title: data.title.trim(),
+        description: (data.description||"").trim(),
+        status: data.status || "active",
+        priority: data.priority || "medium",
+        category: (data.category||"").trim(),
+        startDate: data.startDate || "",
+        endDate: data.endDate || "",
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.addDoc(fs.collection(db, "goals"), { ...g, createdAt: fs.serverTimestamp(), updatedAt: fs.serverTimestamp() });
+      } else {
+        g.id = uuid();
+        goals.unshift(g);
+        goals = goals.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+        lsWrite(LS_GOALS(settings.userId), goals);
+      }
+    }
+
+    async function updateGoal(goalId, patch){
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.updateDoc(fs.doc(db, "goals", goalId), { ...patch, updatedAt: fs.serverTimestamp() });
+      } else {
+        const idx = goals.findIndex(g => g.id === goalId);
+        if (idx >= 0){
+          goals[idx] = { ...goals[idx], ...patch, updatedAt: Date.now() };
+          lsWrite(LS_GOALS(settings.userId), goals);
+        }
+      }
+    }
+
+    async function deleteGoal(goalId){
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.deleteDoc(fs.doc(db, "goals", goalId));
+      } else {
+        goals = goals.filter(g => g.id !== goalId);
+        lsWrite(LS_GOALS(settings.userId), goals);
+      }
+    }
+
+    async function createMicro(goalId, title, dueDate){
+      const now = Date.now();
+      const m = {
+        userId: settings.userId,
+        goalId,
+        title: title.trim(),
+        done: false,
+        failed: false,
+        dueDate: dueDate || "",
+        completedAt: null,
+        // ADDED: timer config per micro-goal
+        targetMinutes: settings.defaultMicroMins,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.addDoc(fs.collection(db, "microGoals"), { ...m, createdAt: fs.serverTimestamp(), updatedAt: fs.serverTimestamp() });
+      } else {
+        m.id = uuid();
+        microGoals.unshift(m);
+        microGoals = microGoals.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0));
+        lsWrite(LS_MICRO(settings.userId), microGoals);
+      }
+    }
+
+    async function updateMicro(microId, patch){
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.updateDoc(fs.doc(db, "microGoals", microId), { ...patch, updatedAt: fs.serverTimestamp() });
+      } else {
+        const idx = microGoals.findIndex(m => m.id === microId);
+        if (idx >= 0){
+          microGoals[idx] = { ...microGoals[idx], ...patch, updatedAt: Date.now() };
+          lsWrite(LS_MICRO(settings.userId), microGoals);
+        }
+      }
+    }
+
+    async function deleteMicro(microId){
+      if (settings.mode === "firebase"){
+        const { db, fs } = await ensureFirebase();
+        await fs.deleteDoc(fs.doc(db, "microGoals", microId));
+      } else {
+        microGoals = microGoals.filter(m => m.id !== microId);
+        lsWrite(LS_MICRO(settings.userId), microGoals);
+      }
+
+      // also remove timer
+      delete timers[microId];
+      lsWriteObj(LS_TIMERS(settings.userId), timers);
+    }
+
+    // =========================
+    // Micro-goal timer engine (ADDED)
+    // =========================
+    let timerTick = null;
+
+    function msToHMS(ms){
+      const s = Math.max(0, Math.floor(ms/1000));
+      const hh = String(Math.floor(s/3600)).padStart(2,"0");
+      const mm = String(Math.floor((s%3600)/60)).padStart(2,"0");
+      const ss = String(s%60).padStart(2,"0");
+      return `${hh}:${mm}:${ss}`;
+    }
+
+    function ensureGlobalTimerTick(){
+      if (timerTick) return;
+      timerTick = setInterval(() => {
+        // update running timers & detect finish
+        const now = Date.now();
+        let changed = false;
+
+        for (const [mid, t] of Object.entries(timers)){
+          if (!t.running) continue;
+
+          const elapsed = (now - t.startMs) + (t.elapsedMs || 0);
+          if (elapsed >= t.targetMs && !t.finished){
+            t.finished = true;
+            t.running = false;
+            t.elapsedMs = t.targetMs;
+            changed = true;
+
+            // auto-fail if not completed yet
+            const m = microGoals.find(x => x.id === mid);
+            if (m && !m.done){
+              updateMicro(mid, { failed: true, done: false }).catch(()=>{});
+              addHistory({ type: "failed", title: m.title, details: "Timer finished" });
+            }
+
+            playAlarm();
+            toast("Time finished", "Alarm ring!");
+          }
+        }
+
+        if (changed){
+          lsWriteObj(LS_TIMERS(settings.userId), timers);
+          renderAll();
+        } else {
+          // lightweight timer label updates
+          updateVisibleTimerBadges();
+        }
+      }, 500);
+    }
+
+    function startMicroTimer(microId, targetMinutes){
+      const targetMs = Math.max(1, Number(targetMinutes || 1)) * 60 * 1000;
+
+      const current = timers[microId] || { running:false, startMs:null, elapsedMs:0, targetMs, finished:false };
+      current.targetMs = targetMs;
+      current.running = true;
+      current.finished = false;
+      current.startMs = Date.now();
+      timers[microId] = current;
+
+      lsWriteObj(LS_TIMERS(settings.userId), timers);
+      ensureGlobalTimerTick();
+      renderAll();
+    }
+
+    function stopMicroTimer(microId){
+      const t = timers[microId];
+      if (!t || !t.running) return;
+      const now = Date.now();
+      const elapsed = (now - t.startMs) + (t.elapsedMs || 0);
+      t.elapsedMs = elapsed;
+      t.running = false;
+      t.startMs = null;
+      timers[microId] = t;
+      lsWriteObj(LS_TIMERS(settings.userId), timers);
+      renderAll();
+    }
+
+    function resetMicroTimer(microId){
+      delete timers[microId];
+      lsWriteObj(LS_TIMERS(settings.userId), timers);
+      renderAll();
+    }
+
+    function getTimerDisplay(microId, fallbackMinutes){
+      const t = timers[microId];
+      const targetMs = (t?.targetMs) ?? (Math.max(1, Number(fallbackMinutes||1)) * 60 * 1000);
+      let elapsed = t?.elapsedMs || 0;
+      if (t?.running) elapsed = (Date.now() - t.startMs) + (t.elapsedMs || 0);
+      const left = Math.max(0, targetMs - elapsed);
+      return { left, elapsed, targetMs, running: !!t?.running, finished: !!t?.finished };
+    }
+
+    function updateVisibleTimerBadges(){
+      document.querySelectorAll("[data-timer-mid]").forEach(node => {
+        const mid = node.getAttribute("data-timer-mid");
+        const mins = Number(node.getAttribute("data-timer-mins") || settings.defaultMicroMins);
+        const d = getTimerDisplay(mid, mins);
+        node.textContent = d.finished ? "Time up" : (d.running ? `⏳ ${msToHMS(d.left)}` : `⏱ ${msToHMS(d.left)}`);
+      });
+    }
+
+    // =========================
+    // Rendering
+    // =========================
+    function renderQuickGoalSelect(){
+      const sel = $("#quickGoal");
+      sel.innerHTML = "";
+      const usable = goals.filter(g => g.status !== "archived");
+      if (!usable.length){
+        sel.appendChild(el("option",{value:""},"Create a goal first"));
+        sel.value = "";
+        return;
+      }
+      usable.forEach(g => sel.appendChild(el("option",{value:g.id}, g.title || "Untitled")));
+      if (!sel.value) sel.value = usable[0].id;
+    }
+
+    function renderDashboard(){
+      const activeGoalsCount = goals.filter(g => g.status === "active").length;
+      const openMicro = microGoals.filter(m => !m.done && !m.failed).length;
+      $("#sumActiveGoals").textContent = String(activeGoalsCount);
+      $("#sumOpenMicro").textContent = String(openMicro);
+
+      const t = todayISO();
+      const overdue = microGoals.filter(m => m.dueDate && m.dueDate < t && !m.done && !m.failed);
+      const dueToday = microGoals.filter(m => m.dueDate === t && !m.done && !m.failed);
+
+      const overdueList = $("#overdueList");
+      const todayList = $("#todayList");
+      overdueList.innerHTML = "";
+      todayList.innerHTML = "";
+
+      const microRow = (m) => el("div",{class:"item"},[
+        el("div",{class:"itemTitle"}, m.title || "Untitled"),
+        el("div",{class:"muted"}, m.dueDate ? `Due: ${m.dueDate}` : "No due date")
+      ]);
+
+      overdue.length ? overdue.forEach(m => overdueList.appendChild(microRow(m)))
+                    : overdueList.appendChild(el("div",{class:"muted"},"No overdue micro-goals."));
+      dueToday.length ? dueToday.forEach(m => todayList.appendChild(microRow(m)))
+                      : todayList.appendChild(el("div",{class:"muted"},"No micro-goals due today."));
+
+      const preview = $("#goalPreview");
+      preview.innerHTML = "";
+      const map = microByGoal();
+      const show = goals.filter(g => g.status !== "archived").slice(0,5);
+
+      show.forEach(g => {
+        const list = map.get(g.id) || [];
+        const p = progressPercent(list);
+        preview.appendChild(el("div",{class:"item"},[
+          el("div",{class:"itemTop"},[
+            el("div",{},[
+              el("div",{class:"itemTitle"}, g.title || "Untitled"),
+              el("div",{class:"muted"}, `${p}% progress`)
+            ]),
+            el("div",{class:"kv"}, g.status || "active")
+          ]),
+          el("div",{style:"height:10px"}),
+          el("div",{class:"progress"}, el("div",{class:"bar", style:`width:${p}%`}))
+        ]));
+      });
+      if (!show.length) preview.appendChild(el("div",{class:"muted"},"No goals yet."));
+    }
+
+    function microItem(m){
+      const box = el("input",{type:"checkbox"});
+      box.checked = !!m.done;
+
+      // timer display
+      const timerBadge = el("span",{
+        class:"timerBadge",
+        "data-timer-mid": m.id,
+        "data-timer-mins": String(m.targetMinutes ?? settings.defaultMicroMins)
+      }, "⏱ 00:00:00");
+
+      const minsInput = el("input",{type:"number", min:"1", step:"1", value: String(m.targetMinutes ?? settings.defaultMicroMins) });
+      minsInput.style.maxWidth = "120px";
+
+      minsInput.addEventListener("change", async () => {
+        const val = Math.max(1, Math.floor(Number(minsInput.value || settings.defaultMicroMins)));
+        minsInput.value = String(val);
+        try{
+          await updateMicro(m.id, { targetMinutes: val });
+          // also update timer target if exists
+          const t = timers[m.id];
+          if (t){
+            t.targetMs = val * 60 * 1000;
+            t.finished = false;
+            timers[m.id] = t;
+            lsWriteObj(LS_TIMERS(settings.userId), timers);
+          }
+          renderAll();
+        }catch(err){
+          toast("Update failed", err?.message || "Unknown error");
+        }
+      });
+
+      const startBtn = el("button",{class:"btn primary"}, "Start");
+      const stopBtn = el("button",{class:"btn"}, "Stop");
+      const resetBtn = el("button",{class:"btn danger"}, "Reset");
+
+      startBtn.addEventListener("click", () => startMicroTimer(m.id, minsInput.value));
+      stopBtn.addEventListener("click", () => stopMicroTimer(m.id));
+      resetBtn.addEventListener("click", () => resetMicroTimer(m.id));
+
+      // fail button (manual control)
+      const failBtn = el("button",{class:"btn danger"}, "Mark failed");
+      failBtn.addEventListener("click", async () => {
+        try{
+          await updateMicro(m.id, { failed: true, done: false, completedAt: null });
+          addHistory({ type:"failed", title: m.title, details: "Marked failed" });
+          toast("Failed", m.title || "Micro-goal");
+          renderAll();
+        }catch(err){
+          toast("Update failed", err?.message || "Unknown error");
+        }
+      });
+
+      box.addEventListener("change", async () => {
+        try{
+          const now = Date.now();
+
+          if (box.checked){
+            // mark complete
+            await updateMicro(m.id, { done:true, failed:false, completedAt: now });
+            addHistory({ type:"completed", title: m.title, details: "Completed" });
+            // stop timer if running
+            if (timers[m.id]?.running) stopMicroTimer(m.id);
+          } else {
+            await updateMicro(m.id, { done:false, completedAt: null });
+          }
+
+          renderAll();
+        }catch(err){
+          toast("Update failed", err?.message || "Unknown error");
+        }
+      });
+
+      const title = el("div",{class:"itemTitle " + (m.done ? "strike" : "")}, m.title || "Untitled");
+      const meta = el("div",{class:"muted"}, m.dueDate ? `Due: ${m.dueDate}` : "No due date");
+
+      const statusChip = m.failed
+        ? el("span",{class:"chipStatus chipRed"}, "✖ Failed")
+        : (m.done ? el("span",{class:"chipStatus chipGreen"}, "✅ Completed") : el("span",{class:"chipStatus chipNeutral"}, "• Active"));
+
+      const del = el("button",{class:"btn danger", onClick: async ()=>{
+        try{ await deleteMicro(m.id); toast("Deleted", "Micro-goal removed"); renderAll(); }
+        catch(err){ toast("Delete failed", err?.message || "Unknown error"); }
+      }},"Remove");
+
+      const timerLine = el("div",{class:"timerLine"},[
+        statusChip,
+        timerBadge,
+        el("span",{class:"muted"},"mins:"),
+        minsInput,
+        startBtn,
+        stopBtn,
+        resetBtn,
+        failBtn
+      ]);
+
+      const root = el("div",{class:"item"},[
+        el("div",{class:"checkRow"},[
+          box,
+          el("div",{style:"flex:1"},[title, meta, el("div",{style:"height:8px"}), timerLine]),
+          del
+        ])
+      ]);
+
+      // set initial timer label
+      queueMicrotask(() => updateVisibleTimerBadges());
+      return root;
+    }
+
+    function goalCard(g){
+      const map = microByGoal();
+      const list = (map.get(g.id) || []).slice().sort((a,b)=> (a.dueDate||"").localeCompare(b.dueDate||""));
+      const p = progressPercent(list);
+
+      const actions = el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"},[
+        el("button",{class:"btn", onClick:()=>startEditGoal(g)},"Edit"),
+        el("button",{class:"btn", onClick:()=>toggleGoalDone(g)}, g.status==="completed" ? "Mark active" : "Mark done"),
+        el("button",{class:"btn", onClick:()=>archiveGoal(g)},"Archive"),
+        el("button",{class:"btn danger", onClick:()=>{ if(confirm("Delete this goal?")) deleteGoal(g.id).then(()=>{toast("Deleted", g.title||"Goal"); renderAll();}); }},"Delete")
+      ]);
+
+      const microList = el("div",{class:"list"});
+      if (!list.length) microList.appendChild(el("div",{class:"muted"},"No micro-goals yet."));
+      list.forEach(m => microList.appendChild(microItem(m)));
+
+      const addTitle = el("input",{placeholder:"e.g., Build navbar animation"});
+      const addDue = el("input",{type:"date"});
+      const addBtn = el("button",{class:"btn", onClick: async ()=>{
+        try{
+          if (!addTitle.value.trim()) throw new Error("Micro-goal title required.");
+          await createMicro(g.id, addTitle.value, addDue.value);
+          addTitle.value = ""; addDue.value = "";
+          toast("Added", "Micro-goal created");
+          renderAll();
+        }catch(err){
+          toast("Add failed", err?.message || "Unknown error");
+        }
+      }},"Add micro-goal");
+
+      return el("div",{class:"item"},[
+        el("div",{class:"itemTop"},[
+          el("div",{},[
+            el("div",{class:"itemTitle"}, g.title || "Untitled"),
+            el("div",{class:"muted"}, (g.description || "").slice(0,120) || "No description")
+          ]),
+          actions
+        ]),
+        el("div",{style:"height:10px"}),
+        el("div",{class:"progress"}, el("div",{class:"bar", style:`width:${p}%`})),
+        el("div",{class:"kvs"},[
+          el("span",{class:"kv"},`Status: ${g.status || "active"}`),
+          el("span",{class:"kv"},`Priority: ${g.priority || "medium"}`),
+          g.category ? el("span",{class:"kv"},`Category: ${g.category}`) : null,
+          el("span",{class:"kv"},`Progress: ${p}%`)
+        ]),
+        el("div",{style:"height:10px"}),
+        el("div",{class:"grid2"},[
+          el("div",{},[ el("label",{}, "Micro-goal title"), addTitle ]),
+          el("div",{},[ el("label",{}, "Due date"), addDue ])
+        ]),
+        el("div",{style:"height:8px"}),
+        addBtn,
+        el("div",{style:"height:10px"}),
+        microList
+      ]);
+    }
+
+    function renderGoals(){
+      const list = $("#goalsList");
+      list.innerHTML = "";
+
+      const statusFilter = $("#statusFilter").value;
+      const searchText = $("#searchText").value.trim().toLowerCase();
+
+      let view = goals.slice();
+      if (statusFilter !== "all") view = view.filter(g => (g.status || "active") === statusFilter);
+      if (searchText){
+        view = view.filter(g =>
+          (g.title || "").toLowerCase().includes(searchText) ||
+          (g.category || "").toLowerCase().includes(searchText)
+        );
+      }
+
+      if (!view.length){
+        list.appendChild(el("div",{class:"muted"},"No goals match your filter."));
+        return;
+      }
+      view.forEach(g => list.appendChild(goalCard(g)));
+    }
+
+    function renderCalendar(){
+      $("#calLabel").textContent = monthCursor.toLocaleString(undefined,{month:"long"}) + " " + monthCursor.getFullYear();
+
+      const weekdays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const calWeek = $("#calWeekdays");
+      calWeek.innerHTML = "";
+      weekdays.forEach(w => calWeek.appendChild(el("div",{class:"weekday"}, w)));
+
+      const start = startOfMonth(monthCursor);
+      const end = endOfMonth(monthCursor);
+      const startGrid = addDays(start, -start.getDay());
+      const endGrid = addDays(end, 6 - end.getDay());
+
+      const byDate = new Map();
+      for (const m of microGoals){
+        if (!m.dueDate) continue;
+        const arr = byDate.get(m.dueDate) || [];
+        arr.push(m);
+        byDate.set(m.dueDate, arr);
+      }
+
+      const grid = $("#calGrid");
+      grid.innerHTML = "";
+
+      for (let d = new Date(startGrid); d <= endGrid; d = addDays(d,1)){
+        const dIso = iso(d);
+        const items = (byDate.get(dIso) || []).slice(0,3);
+        const count = (byDate.get(dIso) || []).length;
+        const inMonth = d.getMonth() === monthCursor.getMonth();
+
+        const cell = el("div",{class:"cell" + (inMonth ? "" : " faded") + (selectedDay===dIso ? " selected" : "")});
+        cell.appendChild(el("div",{class:"cellHead"},[
+          el("span",{}, String(d.getDate())),
+          el("span",{}, count ? String(count) : "")
+        ]));
+        items.forEach(m => {
+          const cls = m.failed ? "" : (m.done ? " done" : "");
+          cell.appendChild(el("div",{class:"chip" + cls}, (m.failed ? "✖ " : (m.done ? "✅ " : "")) + (m.title || "Untitled")));
+        });
+        if (count > 3) cell.appendChild(el("div",{class:"muted", style:"margin-top:6px"}, `+${count-3} more`));
+
+        cell.addEventListener("click", () => {
+          selectedDay = dIso;
+          renderCalendar();
+          renderSelectedDay();
+        });
+        grid.appendChild(cell);
+      }
+
+      renderSelectedDay();
+    }
+
+    function renderSelectedDay(){
+      const title = $("#selectedDayTitle");
+      const list = $("#selectedDayList");
+      list.innerHTML = "";
+      if (!selectedDay){
+        title.textContent = "Select a day";
+        list.appendChild(el("div",{class:"muted"},"Click a date to see items."));
+        return;
+      }
+      title.textContent = "Items on " + selectedDay;
+      const items = microGoals.filter(m => m.dueDate === selectedDay);
+      if (!items.length){
+        list.appendChild(el("div",{class:"muted"},"No micro-goals on this date."));
+        return;
+      }
+      items.forEach(m => list.appendChild(el("div",{class:"item"},[
+        el("div",{class:"itemTitle " + (m.done ? "strike" : "")}, (m.failed ? "✖ " : (m.done ? "✅ " : "")) + (m.title || "Untitled")),
+        el("div",{class:"muted"}, m.goalId ? `Goal ID: ${m.goalId}` : "")
+      ])));
+    }
+
+    // =========================
+    // History render (ADDED)
+    // =========================
+    function renderHistory(){
+      const list = $("#historyList");
+      if (!list) return;
+      list.innerHTML = "";
+
+      const items = history.slice(0, 30);
+      if (!items.length){
+        list.appendChild(el("div",{class:"muted"},"No history yet. Complete or fail a micro-goal to see logs."));
+        return;
+      }
+
+      items.forEach(h => {
+        const good = h.type === "completed";
+        const bad = h.type === "failed";
+        const icon = good ? "✓" : bad ? "✖" : "•";
+        const iconCls = good ? "histIcon good" : bad ? "histIcon bad" : "histIcon";
+        list.appendChild(el("div",{class:"item"},[
+          el("div",{class:"histItem"},[
+            el("div",{class: iconCls}, icon),
+            el("div",{},[
+              el("div",{class:"itemTitle"}, h.title || "Event"),
+              el("div",{class:"muted"}, (h.details ? h.details + " • " : "") + fmtTime(h.ts))
+            ])
+          ])
+        ]));
+      });
+    }
+
+    // =========================
+    // Big timeline graph (ADDED)
+    // =========================
+    function svgClear(svg){ while (svg.firstChild) svg.removeChild(svg.firstChild); }
+    function svgEl(tag, attrs={}){
+      const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(([k,v]) => n.setAttribute(k, String(v)));
+      return n;
+    }
+    function niceMax(n){
+      if (n <= 0) return 1;
+      const pow = Math.pow(10, Math.floor(Math.log10(n)));
+      const m = n / pow;
+      const step = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10;
+      return step * pow;
+    }
+
+    function dayKeyFromMs(ms){ return new Date(ms).toISOString().slice(0,10); }
+    function monthKeyFromMs(ms){
+      const d = new Date(ms);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      return `${y}-${m}`;
+    }
+    function yearKeyFromMs(ms){ return String(new Date(ms).getFullYear()); }
+
+    function weekKeyFromMs(ms){
+      // ISO week-ish (simple): year + week number
+      const d = new Date(ms);
+      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+      return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+    }
+
+    function bucketKeyForRange(range, ms){
+      if (range === "days") return dayKeyFromMs(ms);
+      if (range === "weeks") return weekKeyFromMs(ms);
+      if (range === "months") return monthKeyFromMs(ms);
+      if (range === "years") return yearKeyFromMs(ms);
+      return dayKeyFromMs(ms);
+    }
+
+    function rangeWindow(range){
+      // how many bars to show
+      if (range === "days") return 30;
+      if (range === "weeks") return 20;
+      if (range === "months") return 18;
+      if (range === "years") return 10;
+      return 30;
+    }
+
+    function advanceKey(range, key, step){
+      // used only to generate labels for days window; for others we will build from data keys
+      if (range === "days"){
+        const d = new Date(key + "T00:00:00");
+        const n = addDays(d, step);
+        return iso(n);
+      }
+      return key;
+    }
+
+    function formatLabel(range, key){
+      if (range === "days") return key.slice(5);
+      if (range === "weeks") return key.split("-W")[1] ? ("W" + key.split("-W")[1]) : key;
+      if (range === "months") return key.slice(2);
+      if (range === "years") return key;
+      return key;
+    }
+
+    function renderBigGraph(){
+      const svg = $("#bigGraphSvg");
+      if (!svg) return;
+
+      const W = 1200, H = 360;
+      const padL = 52, padR = 16, padT = 18, padB = 44;
+      const iw = W - padL - padR;
+      const ih = H - padT - padB;
+
+      // Build buckets for completed/failed/neutral
+      // We treat:
+      // - completed => green count
+      // - failed => red count
+      // - neutral => "activity" (created micro goals + history info)
+      const windowSize = rangeWindow(bigRange);
+
+      // collect events with timestamps:
+      const events = [];
+
+      // micro completions/failures:
+      for (const m of microGoals){
+        if (m.done && (m.completedAt || m.updatedAt)){
+          events.push({ ts: m.completedAt || m.updatedAt, kind: "completed" });
+        }
+        if (m.failed && (m.updatedAt)){
+          events.push({ ts: m.updatedAt, kind: "failed" });
+        }
+        // neutral activity: created micro
+        if (m.createdAt){
+          events.push({ ts: m.createdAt, kind: "neutral" });
+        }
+      }
+
+      // also include history info as neutral
+      for (const h of history){
+        events.push({ ts: h.ts, kind: h.type === "completed" ? "completed" : h.type === "failed" ? "failed" : "neutral" });
+      }
+
+      // Determine bucket keys (for days we generate last N days; for others we build from recent keys)
+      const now = Date.now();
+      let keys = [];
+
+      if (bigRange === "days"){
+        const end = new Date();
+        const start = addDays(end, -(windowSize-1));
+        for (let i=0;i<windowSize;i++){
+          keys.push(iso(addDays(start,i)));
+        }
+      } else {
+        // build keys from events, take latest windowSize, then sort
+        const set = new Set();
+        for (const e of events){
+          set.add(bucketKeyForRange(bigRange, e.ts));
+        }
+        keys = Array.from(set);
+        keys.sort();
+        keys = keys.slice(-windowSize);
+        if (!keys.length){
+          // fallback to a single key for now range
+          keys = [bucketKeyForRange(bigRange, now)];
+        }
+      }
+
+      const buckets = new Map(keys.map(k => [k, { key:k, completed:0, failed:0, neutral:0 }]));
+      for (const e of events){
+        const k = bucketKeyForRange(bigRange, e.ts);
+        if (!buckets.has(k)) continue;
+        buckets.get(k)[e.kind] += 1;
+      }
+
+      const arr = keys.map(k => buckets.get(k));
+
+      // find max stack height
+      const maxY = niceMax(Math.max(...arr.map(b => b.completed + b.failed + b.neutral), 0));
+
+      svgClear(svg);
+
+      // grid lines
+      const steps = 4;
+      for (let i=0;i<=steps;i++){
+        const y = padT + ih - (i/steps)*ih;
+        svg.appendChild(svgEl("line",{x1:padL,y1:y,x2:W-padR,y2:y,stroke:"rgba(255,255,255,.10)","stroke-width":"1"}));
+        const label = svgEl("text",{x:10,y:y+4,fill:"rgba(169,184,222,.85)","font-size":"11"});
+        label.textContent = String(Math.round((maxY)*(i/steps)));
+        svg.appendChild(label);
+      }
+
+      const bw = iw / arr.length;
+
+      function yFromValue(v){
+        return padT + ih - (v/maxY)*ih;
+      }
+
+      // Draw stacked bars: red (failed) + neutral + green (completed)
+      arr.forEach((b, i) => {
+        const x = padL + i*bw + Math.max(2, bw*0.14);
+        const w = Math.max(5, bw*0.70);
+
+        let stack = 0;
+
+        // failed (red) bottom
+        const fh = (b.failed/maxY)*ih;
+        if (fh > 0){
+          const y = yFromValue(stack + b.failed);
+          const r = svgEl("rect",{x,y,width:w,height:fh,rx:8,fill:"rgba(251,113,133,.88)"});
+          r.style.transformOrigin = `${x + w/2}px ${padT+ih}px`;
+          r.style.transform = "scaleY(0.08)";
+          svg.appendChild(r);
+          setTimeout(()=>{ r.style.transition="transform 700ms cubic-bezier(.2,.8,.2,1)"; r.style.transform="scaleY(1)"; }, 60 + i*14);
+        }
+        stack += b.failed;
+
+        // neutral middle
+        const nh = (b.neutral/maxY)*ih;
+        if (nh > 0){
+          const y = yFromValue(stack + b.neutral);
+          const r = svgEl("rect",{x,y,width:w,height:nh,rx:8,fill:"rgba(160,174,216,.55)"});
+          r.style.transformOrigin = `${x + w/2}px ${padT+ih}px`;
+          r.style.transform = "scaleY(0.08)";
+          svg.appendChild(r);
+          setTimeout(()=>{ r.style.transition="transform 700ms cubic-bezier(.2,.8,.2,1)"; r.style.transform="scaleY(1)"; }, 80 + i*14);
+        }
+        stack += b.neutral;
+
+        // completed (green) top
+        const ch = (b.completed/maxY)*ih;
+        if (ch > 0){
+          const y = yFromValue(stack + b.completed);
+          const r = svgEl("rect",{x,y,width:w,height:ch,rx:8,fill:"rgba(52,211,153,.92)"});
+          r.style.transformOrigin = `${x + w/2}px ${padT+ih}px`;
+          r.style.transform = "scaleY(0.08)";
+          svg.appendChild(r);
+          setTimeout(()=>{ r.style.transition="transform 700ms cubic-bezier(.2,.8,.2,1)"; r.style.transform="scaleY(1)"; }, 100 + i*14);
+        }
+
+        // x labels sparse
+        const labelEvery = Math.max(1, Math.floor(arr.length/10));
+        if (i % labelEvery === 0 || i === arr.length - 1){
+          const tx = padL + i*bw + bw/2;
+          const t = svgEl("text",{x:tx,y:H-14,fill:"rgba(169,184,222,.85)","font-size":"11","text-anchor":"middle"});
+          t.textContent = formatLabel(bigRange, b.key);
+          svg.appendChild(t);
+        }
+      });
+
+      $("#bigGraphLabel").textContent = `View: ${bigRange.toUpperCase()} • Bars: ${arr.length} • Green=completed, Neutral=activity, Red=failed`;
+    }
+
+    // =========================
+    // Insights render
+    // =========================
+    function renderInsights(){
+      $("#insTotal").textContent = String(microGoals.length);
+      $("#insDone").textContent = String(microGoals.filter(m=>m.done).length);
+      renderHistory();
+      setAlarmAudioFromSettings();
+      updateVisibleTimerBadges();
+    }
+
+    // =========================
+    // Rendering wrapper
+    // =========================
+    function renderAll(){
+      updateUserLabel();
+      $("#quickDue").value = $("#quickDue").value || todayISO();
+      renderQuickGoalSelect();
+      renderDashboard();
+      renderGoals();
+      if (activeTab === "calendar") renderCalendar();
+      if (activeTab === "insights") { renderInsights(); renderBigGraph(); }
+    }
+
+    // =========================
+    // Goal form
+    // =========================
+    function resetGoalForm(){
+      editingGoalId = null;
+      $("#goalFormTitle").textContent = "Create goal";
+      $("#saveGoalBtn").textContent = "Create goal";
+      $("#cancelEditGoalBtn").style.display = "none";
+
+      $("#gTitle").value = "";
+      $("#gCategory").value = "";
+      $("#gDesc").value = "";
+      $("#gPriority").value = "medium";
+      $("#gStatus").value = "active";
+      $("#gStart").value = "";
+      $("#gEnd").value = "";
+    }
+
+    function startEditGoal(g){
+      editingGoalId = g.id;
+      $("#goalFormTitle").textContent = "Edit goal";
+      $("#saveGoalBtn").textContent = "Save changes";
+      $("#cancelEditGoalBtn").style.display = "";
+
+      $("#gTitle").value = g.title || "";
+      $("#gCategory").value = g.category || "";
+      $("#gDesc").value = g.description || "";
+      $("#gPriority").value = g.priority || "medium";
+      $("#gStatus").value = g.status || "active";
+      $("#gStart").value = g.startDate || "";
+      $("#gEnd").value = g.endDate || "";
+      setTab("goals");
+    }
+
+    async function toggleGoalDone(g){
+      const next = (g.status === "completed") ? "active" : "completed";
+      await updateGoal(g.id, { status: next });
+      toast("Updated status", `${g.title} → ${next}`);
+      renderAll();
+    }
+    async function archiveGoal(g){
+      await updateGoal(g.id, { status: "archived" });
+      toast("Archived", g.title || "Goal");
+      renderAll();
+    }
+
+    $("#cancelEditGoalBtn").addEventListener("click", resetGoalForm);
+
+    $("#saveGoalBtn").addEventListener("click", async () => {
+      try{
+        const title = $("#gTitle").value.trim();
+        if (!title) throw new Error("Goal title is required.");
+
+        const payload = {
+          title,
+          category: $("#gCategory").value.trim(),
+          description: $("#gDesc").value.trim(),
+          priority: $("#gPriority").value,
+          status: $("#gStatus").value,
+          startDate: $("#gStart").value,
+          endDate: $("#gEnd").value
+        };
+
+        if (editingGoalId){
+          await updateGoal(editingGoalId, payload);
+          toast("Updated goal", title);
+        } else {
+          await createGoal(payload);
+          toast("Created goal", title);
+        }
+        resetGoalForm();
+        renderAll();
+      }catch(err){
+        toast("Save failed", err?.message || "Unknown error");
+      }
+    });
+
+    // ADDED: bulk create goals
+    $("#bulkCreateBtn").addEventListener("click", async () => {
+      try{
+        const raw = ($("#bulkGoals").value || "").trim();
+        if (!raw) throw new Error("Paste at least one goal title.");
+        const lines = raw.split("\n").map(s => s.trim()).filter(Boolean);
+        if (!lines.length) throw new Error("No valid goal titles found.");
+
+        for (const t of lines){
+          await createGoal({ title: t, category:"", description:"", priority:"medium", status:"active", startDate:"", endDate:"" });
+        }
+        $("#bulkGoals").value = "";
+        toast("Created goals", `${lines.length} goals added`);
+        renderAll();
+      }catch(err){
+        toast("Bulk create failed", err?.message || "Unknown error");
+      }
+    });
+
+    // Filters rerender
+    $("#statusFilter").addEventListener("change", renderGoals);
+    $("#searchText").addEventListener("input", renderGoals);
+
+    // Quick add
+    $("#quickDue").value = todayISO();
+    $("#quickAddBtn").addEventListener("click", async () => {
+      try{
+        const goalId = $("#quickGoal").value;
+        const title = $("#quickTitle").value.trim();
+        const due = $("#quickDue").value;
+        if (!goalId) throw new Error("Create a goal first.");
+        if (!title) throw new Error("Micro-goal title required.");
+        await createMicro(goalId, title, due);
+        $("#quickTitle").value = "";
+        toast("Added", "Micro-goal created");
+        renderAll();
+      }catch(err){
+        toast("Add failed", err?.message || "Unknown error");
+      }
+    });
+
+    // Calendar nav
+    $("#calPrev").addEventListener("click", () => { monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth()-1, 1); renderCalendar(); });
+    $("#calToday").addEventListener("click", () => { monthCursor = new Date(); selectedDay = todayISO(); renderCalendar(); });
+    $("#calNext").addEventListener("click", () => { monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth()+1, 1); renderCalendar(); });
+
+    // Settings apply
+    $("#applySettings").addEventListener("click", async () => {
+      const newUid = $("#demoUserId").value.trim() || "demo_user";
+      const newMode = $("#dataMode").value;
+
+      settings.userId = newUid;
+      settings.mode = newMode;
+      saveSettings();
+
+      editingGoalId = null;
+      goals = [];
+      microGoals = [];
+      history = [];
+      timers = {};
+      selectedDay = null;
+
+      toast("Applied", `User: ${settings.userId} • Mode: ${settings.mode}`);
+      await loadAll();
+      renderAll();
+    });
+
+    function renderSettings(){
+      $("#demoUserId").value = settings.userId;
+      $("#dataMode").value = settings.mode;
+
+      $("#fbHelp").textContent =
+`// Firebase mode is optional. Paste your config here:
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  appId: "..."
+};
+
+// Added features:
+- micro-goal timers with alarm sound upload
+- history logs (completed/failed)
+- big timeline graph (days/weeks/months/years)
+- bulk create goals
+`;
+    }
+
+    // =========================
+    // Insights: Alarm sound upload + default timer
+    // =========================
+    $("#alarmFile").addEventListener("change", async (e) => {
+      try{
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) throw new Error("File too large (max 5MB).");
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          settings.alarmDataUrl = reader.result;
+          saveSettings();
+          setAlarmAudioFromSettings();
+          toast("Alarm saved", "Your sound will be used for timers/reminders.");
+        };
+        reader.readAsDataURL(file);
+      }catch(err){
+        toast("Upload failed", err?.message || "Unknown error");
+      }
+    });
+
+    $("#testAlarm").addEventListener("click", async () => {
+      await playAlarm();
+    });
+
+    $("#defaultMicroMins").value = String(settings.defaultMicroMins || 25);
+    $("#applyDefaultMicroMins").addEventListener("click", () => {
+      const v = Math.max(1, Math.floor(Number($("#defaultMicroMins").value || 25)));
+      settings.defaultMicroMins = v;
+      saveSettings();
+      $("#defaultMicroMins").value = String(v);
+      toast("Saved", `Default micro timer = ${v} minutes`);
+    });
+
+    // Range tabs for big graph
+    $("#rangeTabs").addEventListener("click", (e) => {
+      const t = e.target.closest(".rangeTab");
+      if (!t) return;
+      bigRange = t.dataset.range;
+      document.querySelectorAll(".rangeTab").forEach(x => x.classList.toggle("active", x.dataset.range === bigRange));
+      renderBigGraph();
+    });
+
+    // =========================
+    // Boot
+    // =========================
+    updateUserLabel();
+    setAlarmAudioFromSettings();
+
+    await loadAll();
+    $("#quickDue").value = todayISO();
+    renderAll();
+    setTab("dashboard");
+
+    ensureGlobalTimerTick();
+    toast("Ready", "Added micro-goal alarms, history, bulk create, and big timeline graph.");
+
+    document.addEventListener('DOMContentLoaded', () => {
+    
+    const savedName = localStorage.getItem('userName');
+    
+    
+    const userLabel = document.getElementById('userLabel');
+
+   
+    if (savedName && userLabel) {
+      userLabel.textContent = savedName;
+    }
+
+ 
+    if (!localStorage.getItem('token')) {
+      window.location.href = '/login';
+    }
+  });
+  
+
+  </script>
+
+</body>
+</html>
